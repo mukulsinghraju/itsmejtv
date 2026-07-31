@@ -3,56 +3,92 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
 <title>Telegram-Live-Cric-Hd</title>
 
 <style>
 *{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
+margin:0;
+padding:0;
+box-sizing:border-box;
 }
 
 html,body{
-    width:100%;
-    height:100%;
-    overflow:hidden;
-    background:#000;
-    font-family:Arial,sans-serif;
+width:100%;
+height:100%;
+overflow:hidden;
+background:#000;
+font-family:Segoe UI,Arial,sans-serif;
 }
 
-.player-container{
-    position:fixed;
-    inset:0;
-    width:100%;
-    height:100%;
-    background:#000;
+/* Top Banner */
+.banner{
+position:fixed;
+top:10px;
+left:50%;
+transform:translateX(-50%);
+z-index:9999;
+background:linear-gradient(90deg,#ff3d00,#ff9800);
+color:#fff;
+padding:12px 20px;
+border-radius:14px;
+font-size:16px;
+font-weight:700;
+box-shadow:0 8px 20px rgba(0,0,0,.4);
+animation:fade 1s ease;
 }
 
-.player-container iframe{
-    width:100%;
-    height:100%;
-    border:none;
+@keyframes fade{
+from{
+opacity:0;
+transform:translateX(-50%) translateY(-20px);
+}
+to{
+opacity:1;
+transform:translateX(-50%) translateY(0);
+}
+}
+
+/* Crop iframe top */
+.player{
+position:fixed;
+top:-75px;
+left:0;
+width:100%;
+height:calc(100% + 75px);
+overflow:hidden;
+}
+
+.player iframe{
+width:100%;
+height:100%;
+border:none;
+overflow:hidden;
 }
 </style>
 </head>
 
 <body>
 
+<div class="banner">
+▶ Click Play Stream Button To Start The Stream
+</div>
 <script>
 if (confirm("Join Our Telegram Channel @livecrichdofficial")) {
     window.location.href = "https://telegram.me/+WOHjeld4UV9lYWJl";
 }
 </script>
-
-<div class="player-container">
-    <iframe
-        src="https://players.akamai.com/players/hlsjs?streamUrl=https%3A%2F%2Fdishmt.slivcdn.com%2Fhls%2Flive%2F2020591%2FTEN3HD%2Fhdntl%3Dexp%3D1785571630~acl%3D%2F*~id%3D3b35b572-ee31-4da1-a600-2421b52fdfca~data%3Dhdntl~hmac%3D96762f7d4fe17b7551c0faaa9fefa4a1d03c000ab7a1138c53ac3d299d59c238%2Fmaster_2000.m3u8"
-        sandbox="allow-forms allow-pointer-lock allow-same-origin allow-scripts"
-        allow="autoplay; encrypted-media; fullscreen"
-        allowfullscreen
-        loading="eager">
-    </iframe>
+<div class="player">
+<iframe
+id="playerFrame"
+allow="autoplay; encrypted-media; fullscreen"
+allowfullscreen
+loading="eager"
+sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock">
+</iframe>
 </div>
+
+<script src="player.js"></script>
 
 </body>
 </html>
