@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
+    <title>The Footsters Â· Live Player</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* â•â•â•â•â•â•â•â• UTILITY REPLACEMENTS â•â•â•â•â•â•â•â• */
+        .hidden { display: none !important; }
+        .flex { display: flex !important; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: #000;
+            color: #f8fafc;
+            font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+            overflow: hidden;
+        }
+
+        /* â•â•â•â•â•â•â•â• CUSTOM iOS-STYLE PLAYER â•â•â•â•â•â•â•â• */
+        .player-shell {
+            position: absolute;
+            inset: 0;
+            background: transparent;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        .video-area {
+            position: absolute;
+            inset: 0;
+            background: #000;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        #native-video {
+            position: absolute;
+            inset: 0;
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            background: #000;
+            display: block;
+        }
+
+        /* Brand Watermark */
+        .brand-watermark {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 8px 14px;
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            pointer-events: none;
+            opacity: 0.8;
+        }
+        .brand-watermark .logo-icon {
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, #6366f1, #ec4899);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            color: white;
+        }
+        .brand-watermark .text {
+            font-family: 'Sora', sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            color: #fff;
+        }
+        
+        @media (max-width: 640px) {
+            .brand-watermark { top: 12px; left: 12px; padding: 6px 10px; }
+            .brand-watermark .text { font-size: 10px; }
+            .brand-watermark .logo-icon { width: 18px; height: 18px; font-size: 11px; }
+        }
+
+        /* Player Message Overlay */
+        .player-message {
+            position: absolute;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.8);
+            text-align: center;
+            padding: 0 1.5rem;
+            font-size: 0.875rem;
+            line-height: 1.25rem;
+            color: #cbd5e1;
+            z-index: 50;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Bottom Control Pill */
+        .ios-bottom-bar {
+            position: absolute;
+            bottom: 20px; left: 50%;
+            transform: translateX(-50%);
+            z-index: 30;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            width: calc(100% - 32px);
+            max-width: 900px;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+        .hide-controls .ios-bottom-bar {
+            opacity: 0;
+            transform: translateX(-50%) translateY(20px);
+            pointer-events: none;
+        }
+
+        /* Progress Bar */
+        .ios-progress-track {
+            width: 100%;
+            height: 24px;
+            display: flex; align-items: center;
+            cursor: pointer;
+            padding: 8px 0;
+        }
+        .ios-progress-rail {
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 100px;
+            position: relative;
+            transition: height 0.15s;
+        }
+        .ios-progress-track:hover .ios-progress-rail { height: 6px; }
+        .ios-progress-filled {
+            position: absolute; left: 0; top: 0;
+            height: 100%;
+            background: #fff;
+            border-radius: 100px;
+            pointer-events: none;
+        }
+        .ios-progress-thumb {
+            position: absolute; top: 50%;
+            width: 14px; height: 14px;
+            background: #fff;
+            border-radius: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            pointer-events: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+            transition: transform 0.15s;
+        }
+        .ios-progress-track:hover .ios-progress-thumb { transform: translate(-50%, -50%) scale(1); }
+
+        /* Control Pill Bar */
+        .ios-pill-bar {
+            width: 100%;
+            background: rgba(30, 30, 35, 0.85);
+            backdrop-filter: blur(40px) saturate(180%);
+            -webkit-backdrop-filter: blur(40px) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+        }
+
+        .ios-btn {
+            background: transparent;
+            border: none;
+            width: 40px; height: 40px;
+            display: grid; place-items: center;
+            cursor: pointer;
+            transition: all 0.15s;
+            color: rgba(255,255,255,0.9);
+            border-radius: 50%;
+        }
+        .ios-btn:hover { background: rgba(255,255,255,0.1); }
+        .ios-btn:active { transform: scale(0.9); }
+        .ios-btn svg { width: 22px; height: 22px; }
+
+        .ios-time {
+            font-size: 12px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.7);
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+            padding: 0 8px;
+            user-select: none;
+        }
+        .ios-spacer { flex: 1; }
+
+        /* Quality Menu */
+        .ios-menu-wrap { position: relative; }
+        .ios-quality-menu {
+            position: absolute;
+            bottom: calc(100% + 12px);
+            right: 0;
+            background: rgba(30, 30, 35, 0.95);
+            backdrop-filter: blur(40px) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 18px;
+            padding: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            z-index: 40;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+            transform-origin: bottom right;
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.85);
+            min-width: 120px;
+        }
+        .ios-quality-menu.open {
+            opacity: 1;
+            pointer-events: auto;
+            transform: scale(1);
+        }
+        .ios-quality-item {
+            padding: 10px 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.6);
+            transition: all 0.12s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .ios-quality-item:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .ios-quality-item.active { color: #fff; background: rgba(255,255,255,0.1); }
+        .ios-quality-item.active::after {
+            content: 'âœ“';
+            font-size: 14px;
+            margin-left: 8px;
+        }
+
+        /* Center Play/Pause Flash */
+        .ios-center-flash {
+            position: absolute;
+            inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 15;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        .ios-center-flash.show { opacity: 1; }
+        .ios-center-circle {
+            width: 72px; height: 72px;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(20px);
+            border-radius: 50%;
+            display: grid; place-items: center;
+            transform: scale(0.6);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .ios-center-flash.show .ios-center-circle { transform: scale(1); }
+        .ios-center-circle svg { width: 32px; height: 32px; color: #fff; }
+
+        /* â•â•â•â•â•â•â•â• TELEGRAM POPUP â•â•â•â•â•â•â•â• */
+        .tg-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.75);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+        .tg-modal.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .tg-box {
+            background: linear-gradient(180deg, #0d1424, #080c16);
+            border: 1px solid rgba(99, 102, 241, 0.4);
+            border-radius: 28px;
+            padding: 36px 28px;
+            max-width: 360px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 30px 80px rgba(0,0,0,.6);
+            transform: scale(0.9);
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .tg-modal.show .tg-box {
+            transform: scale(1);
+        }
+        .tg-icon {
+            width: 76px; height: 76px;
+            margin: 0 auto 20px;
+            border-radius: 22px;
+            background: linear-gradient(135deg, #229ED9, #1a8bbf);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 34px;
+            color: white;
+            box-shadow: 0 12px 30px rgba(34,158,217,.4);
+        }
+        .tg-box h3 {
+            font-family: 'Sora', sans-serif;
+            font-size: 20px;
+            font-weight: 800;
+            margin: 0 0 8px;
+        }
+        .tg-box p {
+            color: #7b8aa8;
+            font-size: 14px;
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+        .tg-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .tg-actions button {
+            flex: 1;
+            padding: 14px;
+            border-radius: 14px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+            transition: .25s;
+            font-family: inherit;
+        }
+        .tg-yes {
+            background: linear-gradient(135deg, #229ED9, #1a8bbf);
+            color: white;
+        }
+        .tg-yes:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(34,158,217,.5);
+        }
+        .tg-no {
+            background: rgba(255,255,255,0.05);
+            color: #94a3b8;
+        }
+        .tg-no:hover {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+
+        /* Mobile adjustments */
+        @media (max-width: 640px) {
+            .ios-btn { width: 36px; height: 36px; }
+            .ios-btn svg { width: 20px; height: 20px; }
+            .ios-pill-bar { padding: 6px 8px; border-radius: 20px; gap: 2px; }
+            .ios-time { font-size: 11px; padding: 0 4px; }
+            .ios-bottom-bar { bottom: 12px; width: calc(100% - 16px); }
+            .tg-box { padding: 28px 20px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- â•â•â•â•â•â•â•â• CUSTOM PLAYER â•â•â•â•â•â•â•â• -->
+    <div class="player-shell">
+
+        <!-- Video Area -->
+        <div id="video-area" class="video-area">
+            <video id="native-video" autoplay playsinline referrerpolicy="no-referrer"></video>
+            
+            <!-- Brand Watermark (Replaced Football with Telegram Icon) -->
+            <div class="brand-watermark">
+                <div class="logo-icon"><i class="fab fa-telegram-plane"></i></div>
+                <span class="text">THE FOOTSTERS</span>
+            </div>
+
+            <div id="player-message" class="player-message hidden"></div>
+
+            <!-- Center Flash -->
+            <div id="center-flash" class="ios-center-flash">
+                <div class="ios-center-circle">
+                    <svg id="center-play-svg" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    <svg id="center-pause-svg" fill="currentColor" viewBox="0 0 24 24" class="hidden"><rect x="6" y="4" width="4" height="16" rx="1.5"/><rect x="14" y="4" width="4" height="16" rx="1.5"/></svg>
+                </div>
+            </div>
+
+            <!-- Bottom Bar -->
+            <div id="ios-bottom-bar" class="ios-bottom-bar">
+                <!-- Scrubber -->
+                <div id="progress-track" class="ios-progress-track">
+                    <div class="ios-progress-rail">
+                        <div id="progress-filled" class="ios-progress-filled" style="width:0%"></div>
+                        <div id="progress-thumb" class="ios-progress-thumb" style="left:0%"></div>
+                    </div>
+                </div>
+                
+                <!-- Controls Pill -->
+                <div class="ios-pill-bar">
+                    <button id="play-pause-btn" class="ios-btn" title="Play/Pause">
+                        <svg id="icon-play" fill="currentColor" viewBox="0 0 24 24" class="hidden"><path d="M8 5v14l11-7z"/></svg>
+                        <svg id="icon-pause" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1.5"/><rect x="14" y="4" width="4" height="16" rx="1.5"/></svg>
+                    </button>
+                    
+                    <!-- Mute Button -->
+                    <button id="mute-btn" class="ios-btn" title="Mute/Unmute (M)">
+                        <svg id="icon-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+                        <svg id="icon-unmuted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" class="hidden"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 010 7.07"/><path d="M19.07 4.93a10 10 0 010 14.14"/></svg>
+                    </button>
+
+                    <span class="ios-time"><span id="cur-time">0:00</span></span>
+                    
+                    <div class="ios-spacer"></div>
+
+                    <!-- Quality Menu -->
+                    <div class="ios-menu-wrap">
+                        <button id="quality-btn" class="ios-btn" title="Quality">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                        </button>
+                        <div id="quality-menu" class="ios-quality-menu"></div>
+                    </div>
+
+                    <button id="fs-btn" class="ios-btn" title="Fullscreen">
+                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- â•â•â•â•â•â•â•â• TELEGRAM MODAL â•â•â•â•â•â•â•â• -->
+    <div id="tg-modal" class="tg-modal">
+        <div class="tg-box">
+            <div class="tg-icon"><i class="fab fa-telegram-plane"></i></div>
+            <h3>Join The Footsters</h3>
+            <p>Get instant alerts for live matches, breaking news & exclusive streams in our Telegram channel.</p>
+            <div class="tg-actions">
+                <button class="tg-no" onclick="closeTg()">Later</button>
+                <button class="tg-yes" onclick="openTg()">Join Now</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script>
+      let hlsInstance = null;
+let isDragging = false;
+let controlsTimer = null;
+let isQualityMenuOpen = false;
+
+// ================================
+// ELEMENTS
+// ================================
+
+const video = document.getElementById("native-video");
+const message = document.getElementById("player-message");
+const videoArea = document.getElementById("video-area");
+
+const playPauseBtn = document.getElementById("play-pause-btn");
+const iconPlay = document.getElementById("icon-play");
+const iconPause = document.getElementById("icon-pause");
+
+const muteBtn = document.getElementById("mute-btn");
+const iconMuted = document.getElementById("icon-muted");
+const iconUnmuted = document.getElementById("icon-unmuted");
+
+const centerFlash = document.getElementById("center-flash");
+const centerPlaySvg = document.getElementById("center-play-svg");
+const centerPauseSvg = document.getElementById("center-pause-svg");
+
+const progressTrack = document.getElementById("progress-track");
+const progressFilled = document.getElementById("progress-filled");
+const progressThumb = document.getElementById("progress-thumb");
+
+const curTimeEl = document.getElementById("cur-time");
+
+const qualityBtn = document.getElementById("quality-btn");
+const qualityMenu = document.getElementById("quality-menu");
+
+const fsBtn = document.getElementById("fs-btn");
+
+// Original player starts muted
+video.muted = true;
+updateMuteIcon();
+
+
+// ================================
+// KEYBOARD CONTROLS
+// ================================
+
+document.addEventListener("keydown", (event) => {
+
+    // ESC
+    if (event.key === "Escape") {
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+        }
+    }
+
+    // SPACE = Play/Pause
+    if (event.key === " ") {
+        event.preventDefault();
+        togglePlay();
+    }
+
+    // M = Mute
+    if (event.key === "m" || event.key === "M") {
+        event.preventDefault();
+        video.muted = !video.muted;
+    }
+});
+
+
+// ================================
+// PLAY / PAUSE
+// ================================
+
+playPauseBtn.addEventListener("click", togglePlay);
+
+videoArea.addEventListener("click", (event) => {
+
+    // Don't play/pause when clicking controls
+    if (
+        event.target.closest(".ios-btn") ||
+        event.target.closest(".ios-progress-track") ||
+        event.target.closest(".brand-watermark")
+    ) {
+        return;
+    }
+
+    togglePlay();
+});
+
+video.addEventListener("play", updatePlayIcon);
+video.addEventListener("pause", updatePlayIcon);
+
+
+function togglePlay() {
+
+    if (video.paused) {
+
+        video.play().catch(() => {
+            showMessage("Click play to start the stream.");
+        });
+
+    } else {
+
+        video.pause();
+    }
+}
+
+
+// ================================
+// PLAY ICON
+// ================================
+
+function updatePlayIcon() {
+
+    const isPlaying = !video.paused;
+
+    iconPlay.classList.toggle("hidden", isPlaying);
+    iconPause.classList.toggle("hidden", !isPlaying);
+
+    centerPlaySvg.classList.toggle("hidden", isPlaying);
+    centerPauseSvg.classList.toggle("hidden", !isPlaying);
+
+    centerFlash.classList.add("show");
+
+    setTimeout(() => {
+        centerFlash.classList.remove("show");
+    }, 300);
+
+    resetAutoHide();
+}
+
+
+// ================================
+// MUTE
+// ================================
+
+muteBtn.addEventListener("click", (event) => {
+
+    event.stopPropagation();
+
+    video.muted = !video.muted;
+
+    if (!video.muted && video.volume === 0) {
+        video.volume = 0.5;
+    }
+});
+
+video.addEventListener("volumechange", updateMuteIcon);
+
+
+function updateMuteIcon() {
+
+    const isMuted =
+        video.muted ||
+        video.volume === 0;
+
+    iconMuted.classList.toggle(
+        "hidden",
+        !isMuted
+    );
+
+    iconUnmuted.classList.toggle(
+        "hidden",
+        isMuted
+    );
+}
+
+
+// ================================
+// TIME / PROGRESS
+// ================================
+
+video.addEventListener("timeupdate", updateProgress);
+
+video.addEventListener("loadedmetadata", () => {
+    curTimeEl.textContent = formatTime(video.currentTime);
+});
+
+
+function updateProgress() {
+
+    if (isDragging) {
+        return;
+    }
+
+    if (video.duration) {
+
+        const percentage =
+            (video.currentTime / video.duration) * 100;
+
+        progressFilled.style.width =
+            percentage + "%";
+
+        progressThumb.style.left =
+            percentage + "%";
+
+        curTimeEl.textContent =
+            formatTime(video.currentTime);
+    }
+}
+
+
+// ================================
+// SEEKING
+// ================================
+
+progressTrack.addEventListener(
+    "mousedown",
+    startDrag
+);
+
+progressTrack.addEventListener(
+    "touchstart",
+    startDrag,
+    {
+        passive: false
+    }
+);
+
+document.addEventListener(
+    "mousemove",
+    onDrag
+);
+
+document.addEventListener(
+    "touchmove",
+    onDrag,
+    {
+        passive: false
+    }
+);
+
+document.addEventListener(
+    "mouseup",
+    endDrag
+);
+
+document.addEventListener(
+    "touchend",
+    endDrag
+);
+
+
+function startDrag(event) {
+
+    event.preventDefault();
+
+    isDragging = true;
+
+    videoArea.classList.remove(
+        "hide-controls"
+    );
+
+    seekToEvent(event);
+}
+
+
+function onDrag(event) {
+
+    if (!isDragging) {
+        return;
+    }
+
+    event.preventDefault();
+
+    seekToEvent(event);
+}
+
+
+function endDrag() {
+
+    if (!isDragging) {
+        return;
+    }
+
+    isDragging = false;
+
+    resetAutoHide();
+}
+
+
+function seekToEvent(event) {
+
+    const rect =
+        progressTrack.getBoundingClientRect();
+
+    const clientX =
+        event.touches
+            ? event.touches[0].clientX
+            : event.clientX;
+
+    let position =
+        (clientX - rect.left) /
+        rect.width;
+
+    position = Math.max(
+        0,
+        Math.min(1, position)
+    );
+
+    const percentage =
+        position * 100;
+
+    progressFilled.style.width =
+        percentage + "%";
+
+    progressThumb.style.left =
+        percentage + "%";
+
+    if (video.duration) {
+
+        video.currentTime =
+            position * video.duration;
+
+        curTimeEl.textContent =
+            formatTime(video.currentTime);
+    }
+}
+
+
+// ================================
+// FORMAT TIME
+// ================================
+
+function formatTime(seconds) {
+
+    if (!seconds || !isFinite(seconds)) {
+        return "0:00";
+    }
+
+    const hours =
+        Math.floor(seconds / 3600);
+
+    const minutes =
+        Math.floor(
+            (seconds % 3600) / 60
+        );
+
+    const secs =
+        Math.floor(seconds % 60);
+
+    if (hours > 0) {
+
+        return (
+            hours +
+            ":" +
+            String(minutes).padStart(2, "0") +
+            ":" +
+            String(secs).padStart(2, "0")
+        );
+    }
+
+    return (
+        minutes +
+        ":" +
+        String(secs).padStart(2, "0")
+    );
+}
+
+
+// ================================
+// AUTO HIDE CONTROLS
+// ================================
+
+videoArea.addEventListener(
+    "mousemove",
+    resetAutoHide
+);
+
+videoArea.addEventListener(
+    "touchstart",
+    resetAutoHide,
+    {
+        passive: true
+    }
+);
+
+
+function resetAutoHide() {
+
+    videoArea.classList.remove(
+        "hide-controls"
+    );
+
+    clearTimeout(controlsTimer);
+
+    if (
+        !video.paused &&
+        !isDragging &&
+        !isQualityMenuOpen
+    ) {
+
+        controlsTimer =
+            setTimeout(() => {
+
+                videoArea.classList.add(
+                    "hide-controls"
+                );
+
+            }, 3000);
+    }
+}
+
+
+// ================================
+// DOUBLE CLICK FULLSCREEN
+// ================================
+
+video.addEventListener(
+    "dblclick",
+    toggleFullscreen
+);
+
+fsBtn.addEventListener(
+    "click",
+    toggleFullscreen
+);
+
+
+function toggleFullscreen() {
+
+    if (!document.fullscreenElement) {
+
+        if (
+            document.documentElement
+                .requestFullscreen
+        ) {
+
+            document.documentElement
+                .requestFullscreen();
+        }
+
+    } else {
+
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        }
+    }
+
+    resetAutoHide();
+}
+
+
+// ================================
+// QUALITY BUTTON
+// ================================
+
+qualityBtn.addEventListener(
+    "click",
+    (event) => {
+
+        event.stopPropagation();
+
+        qualityMenu.classList.toggle(
+            "open"
+        );
+
+        isQualityMenuOpen =
+            qualityMenu.classList.contains(
+                "open"
+            );
+
+        resetAutoHide();
+    }
+);
+
+
+// Close quality menu when clicking outside
+
+document.addEventListener(
+    "click",
+    (event) => {
+
+        if (
+            isQualityMenuOpen &&
+            !qualityMenu.contains(event.target) &&
+            event.target !== qualityBtn
+        ) {
+
+            qualityMenu.classList.remove(
+                "open"
+            );
+
+            isQualityMenuOpen = false;
+        }
+    }
+);
+
+
+// ================================
+// BUILD QUALITY MENU
+// ================================
+
+function buildQualityMenu(
+    selectedLevel = -1
+) {
+
+    qualityMenu.innerHTML = "";
+
+    const qualities = [
+        {
+            name: "Auto",
+            level: -1
+        }
+    ];
+
+
+    if (
+        hlsInstance &&
+        hlsInstance.levels.length > 0
+    ) {
+
+        hlsInstance.levels.forEach(
+            (level, index) => {
+
+                let name =
+                    level.height + "p";
+
+                if (level.bitrate) {
+
+                    const mbps =
+                        (
+                            level.bitrate /
+                            1000000
+                        ).toFixed(1);
+
+                    name +=
+                        " (" +
+                        mbps +
+                        " Mbps)";
+                }
+
+                qualities.push({
+                    name: name,
+                    level: index
+                });
+            }
+        );
+
+    } else {
+
+        qualities.push({
+            name: "Native",
+            level: -2
+        });
+    }
+
+
+    qualities.forEach((quality) => {
+
+        const item =
+            document.createElement("div");
+
+        item.className =
+            "ios-quality-item";
+
+        if (
+            quality.level ===
+            selectedLevel
+        ) {
+
+            item.classList.add(
+                "active"
+            );
+        }
+
+        item.textContent =
+            quality.name;
+
+
+        item.addEventListener(
+            "click",
+            (event) => {
+
+                event.stopPropagation();
+
+                if (
+                    hlsInstance &&
+                    quality.level >= -1
+                ) {
+
+                    hlsInstance.currentLevel =
+                        quality.level;
+                }
+
+                qualityMenu.classList.remove(
+                    "open"
+                );
+
+                isQualityMenuOpen = false;
+
+                buildQualityMenu(
+                    quality.level
+                );
+            }
+        );
+
+        qualityMenu.appendChild(
+            item
+        );
+    });
+}
+
+
+// ================================
+// LOAD STREAM
+// ================================
+
+function loadStream(
+    streamUrl,
+    startTime = 0
+) {
+
+    showMessage("");
+
+    stopPlayer();
+
+    video.muted = true;
+
+    updateMuteIcon();
+
+
+    const isM3U8 =
+        streamUrl.includes(".m3u8");
+
+
+    // ============================
+    // NATIVE HLS / DIRECT VIDEO
+    // ============================
+
+    if (
+        !isM3U8 ||
+        video.canPlayType(
+            "application/vnd.apple.mpegurl"
+        )
+    ) {
+
+        video.src = streamUrl;
+
+        video.addEventListener(
+            "loadedmetadata",
+            () => {
+
+                if (startTime > 0) {
+
+                    video.currentTime =
+                        startTime;
+                }
+
+                video.play().catch(() => {
+
+                    showMessage(
+                        "Click play to start the stream."
+                    );
+                });
+
+                buildQualityMenu(-1);
+
+            },
+            {
+                once: true
+            }
+        );
+
+        return;
+    }
+
+
+    // ============================
+    // HLS.JS
+    // ============================
+
+    if (
+        window.Hls &&
+        Hls.isSupported()
+    ) {
+
+        hlsInstance =
+            new Hls({
+
+                enableWorker: true,
+
+                lowLatencyMode: true,
+
+                xhrSetup: (xhr) => {
+
+                    xhr.withCredentials =
+                        false;
+                },
+
+                // Original value:
+                // 0x4c4b40 = 5,000,000
+                abrEwmaDefaultEstimate:
+                    5000000,
+
+                // 0x1e
+                maxBufferLength:
+                    30,
+
+                // 0x3c
+                maxMaxBufferLength:
+                    60
+            });
+
+
+        hlsInstance.loadSource(
+            streamUrl
+        );
+
+        hlsInstance.attachMedia(
+            video
+        );
+
+
+        // ========================
+        // MANIFEST LOADED
+        // ========================
+
+        hlsInstance.on(
+            Hls.Events.MANIFEST_PARSED,
+            () => {
+
+                buildQualityMenu(-1);
+
+                if (startTime > 0) {
+
+                    video.currentTime =
+                        startTime;
+                }
+
+                video.play().catch(() => {
+
+                    showMessage(
+                        "Click play to start the stream."
+                    );
+                });
+            }
+        );
+
+
+        // ========================
+        // QUALITY SWITCHED
+        // ========================
+
+        hlsInstance.on(
+            Hls.Events.LEVEL_SWITCHED,
+            (event, data) => {
+
+                buildQualityMenu(
+                    data.level
+                );
+            }
+        );
+
+
+        // ========================
+        // HLS ERRORS
+        // ========================
+
+        hlsInstance.on(
+            Hls.Events.ERROR,
+            (event, data) => {
+
+                if (!data.fatal) {
+                    return;
+                }
+
+
+                switch (data.type) {
+
+                    // NETWORK ERROR
+                    case Hls.ErrorTypes.NETWORK_ERROR:
+
+                        showMessage(
+                            "Network error. Trying to recover..."
+                        );
+
+                        hlsInstance.startLoad();
+
+                        break;
+
+
+                    // MEDIA ERROR
+                    case Hls.ErrorTypes.MEDIA_ERROR:
+
+                        showMessage(
+                            "Media error. Trying to recover..."
+                        );
+
+                        hlsInstance
+                            .recoverMediaError();
+
+                        break;
+
+
+                    // OTHER FATAL ERROR
+                    default:
+
+                        showMessage(
+                            "This stream could not be played. Check the URL."
+                        );
+
+                        stopPlayer();
+
+                        break;
+                }
+            }
+        );
+
+        return;
+    }
+
+
+    // Browser doesn't support HLS
+
+    showMessage(
+        "This browser cannot play HLS streams."
+    );
+}
+
+
+// ================================
+// STOP PLAYER
+// ================================
+
+function stopPlayer() {
+
+    if (hlsInstance) {
+
+        hlsInstance.destroy();
+
+        hlsInstance = null;
+    }
+
+    video.pause();
+
+    video.removeAttribute(
+        "src"
+    );
+
+    video.load();
+
+    buildQualityMenu(-1);
+}
+
+
+// ================================
+// PLAYER MESSAGE
+// ================================
+
+function showMessage(text) {
+
+    message.textContent = text;
+
+    message.classList.toggle(
+        "hidden",
+        !text
+    );
+
+    message.classList.toggle(
+        "flex",
+        Boolean(text)
+    );
+}
+
+
+// ================================
+// TELEGRAM
+// ================================
+
+function openTg() {
+
+    window.open(
+        "https://t.me/+qUHOnerArQMyYWE9",
+        "_blank"
+    );
+
+    closeTg();
+}
+
+
+function closeTg() {
+
+    document
+        .getElementById("tg-modal")
+        .classList.remove("show");
+}
+
+
+// ================================
+// INITIALIZE QUALITY MENU
+// ================================
+
+buildQualityMenu(-1);
+
+
+// ================================
+// GET STREAM FROM URL
+// ================================
+
+const urlParams =
+    new URLSearchParams(
+        window.location.search
+    );
+
+const playUrl =
+    urlParams.get("url") ||
+    urlParams.get("play");
+
+
+if (playUrl) {
+
+    loadStream(playUrl);
+
+} else {
+
+    showMessage(
+        "No stream URL provided in URL (e.g., ?url=https://...)"
+    );
+}
+    </script>
+</body>
+</html>
